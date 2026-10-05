@@ -1,0 +1,19 @@
+# Production Profile (Aiven Cloud MySQL & Production Hardening)
+spring:
+  jpa:
+    show-sql: false
+  flyway:
+    validate-on-migrate: true
+
+logging:
+  level:
+    com.hireflow: INFO
+    org.springframework.security: WARN
+    org.flywaydb: INFO
+    root: WARN
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false

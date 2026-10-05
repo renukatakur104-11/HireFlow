@@ -1,0 +1,24 @@
+# Development Profile (Local MySQL / Dev Docker DB)
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/hireflow_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:devpassword}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+logging:
+  level:
+    com.hireflow: DEBUG
+    org.springframework.security: INFO
+    org.flywaydb: INFO
