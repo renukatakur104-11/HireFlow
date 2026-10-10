@@ -37,6 +37,7 @@ public class ApplicationService {
     private final EligibilityService eligibilityService;
     private final StateMachineService stateMachineService;
     private final NotificationService notificationService;
+    private final com.hireflow.modules.audit.AuditService auditService;
 
     @Transactional
     public ApplicationDto apply(Long driveId, UserPrincipal principal) {
@@ -129,6 +130,13 @@ public class ApplicationService {
         saveHistory(app, prev, req.getNewStatus(), admin, req.getRemarks(), req.isOverride());
 
         try {
+            auditService.logApplicationStatusChanged(admin.getId(), applicationId,
+                    prev.name(), req.getNewStatus().name(), req.isOverride(), null);
+        } catch (Exception e) {
+            log.warn("Failed to audit application status change: {}", e.getMessage());
+        }
+
+        try {
             notificationService.notifyStatusChanged(app);
         } catch (Exception e) {
             log.warn("Failed to dispatch status changed notification: {}", e.getMessage());
@@ -150,6 +158,12 @@ public class ApplicationService {
                 app.setCurrentStatus(req.getNewStatus());
                 applicationRepository.save(app);
                 saveHistory(app, prev, req.getNewStatus(), admin, req.getRemarks(), req.isOverride());
+                try {
+                    auditService.logApplicationStatusChanged(admin.getId(), appId,
+                            prev.name(), req.getNewStatus().name(), req.isOverride(), null);
+                } catch (Exception auditEx) {
+                    log.warn("Failed to audit bulk status change for app {}: {}", appId, auditEx.getMessage());
+                }
                 try {
                     notificationService.notifyStatusChanged(app);
                 } catch (Exception notifEx) {

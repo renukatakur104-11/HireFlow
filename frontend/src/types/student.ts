@@ -17,3 +17,16 @@ export interface StudentProfile {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface RowError {
+  rowNumber: number;
+  email: string;
+  message: string;
+}
+
+export interface BulkImportResponse {
+  totalRows: number;
+  successfulCount: number;
+  failedCount: number;
+  errors: RowError[];
+}

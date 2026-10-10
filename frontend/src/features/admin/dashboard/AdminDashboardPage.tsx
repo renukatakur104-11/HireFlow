@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, Briefcase, TrendingUp, CheckCircle } from 'lucide-react';
+import { Users, Briefcase, TrendingUp, CheckCircle, Award } from 'lucide-react';
 import apiClient from '../../../lib/api/client';
 import { API } from '../../../lib/api/endpoints';
 import { ApiResponse } from '../../../types/api';
@@ -10,6 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 
 interface KpiStats { totalStudents: number; activeDrives: number; totalApplications: number; selectedStudents: number; selectionRate: number; }
 interface FunnelData { status: string; count: number; }
+interface BranchPlacementData { branch: string; totalStudents: number; placedStudents: number; placementRate: number; }
 
 export function AdminDashboardPage() {
   const { data: kpiData, isLoading: kpiLoading } = useQuery<ApiResponse<KpiStats>>({
@@ -20,8 +21,13 @@ export function AdminDashboardPage() {
     queryKey: ['admin-funnel'],
     queryFn: () => apiClient.get(API.admin.stats.funnel).then(r => r.data),
   });
+  const { data: branchData, isLoading: branchLoading } = useQuery<ApiResponse<BranchPlacementData[]>>({
+    queryKey: ['admin-branch-placements'],
+    queryFn: () => apiClient.get(API.admin.stats.branchPlacements).then(r => r.data),
+  });
   const kpi = kpiData?.data;
   const funnel = funnelData?.data ?? [];
+  const branchPlacements = branchData?.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -41,21 +47,51 @@ export function AdminDashboardPage() {
           ))
         }
       </div>
-      <Card>
-        <CardHeader><CardTitle>Application Funnel</CardTitle></CardHeader>
-        <CardContent>
-          {funnelLoading ? <Skeleton className="h-64" /> : (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={funnel.filter(f => f.count > 0)} margin={{ top:5,right:20,left:0,bottom:5 }}>
-                <XAxis dataKey="status" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#4f46e5" radius={[4,4,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader><CardTitle>Application Funnel</CardTitle></CardHeader>
+          <CardContent>
+            {funnelLoading ? <Skeleton className="h-64" /> : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={funnel.filter(f => f.count > 0)} margin={{ top:5,right:20,left:0,bottom:5 }}>
+                  <XAxis dataKey="status" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#4f46e5" radius={[4,4,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Award className="w-4 h-4 text-emerald-600" />Branch Placement Overview</CardTitle></CardHeader>
+          <CardContent>
+            {branchLoading ? <Skeleton className="h-64" /> : branchPlacements.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-12">No branch placement data available yet</p>
+            ) : (
+              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                {branchPlacements.map((bp) => (
+                  <div key={bp.branch} className="space-y-1">
+                    <div className="flex justify-between text-xs font-medium text-slate-700">
+                      <span className="truncate max-w-[200px]">{bp.branch}</span>
+                      <span>{bp.placedStudents} / {bp.totalStudents} placed ({bp.placementRate}%)</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, bp.placementRate)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>

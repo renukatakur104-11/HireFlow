@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Download, Search, FileText } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Download, Upload, Search, FileText } from 'lucide-react';
 import apiClient from '../../../lib/api/client';
 import { API } from '../../../lib/api/endpoints';
 import { StudentProfile } from '../../../types/student';
@@ -9,11 +9,14 @@ import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Skeleton } from '../../../components/ui/Skeleton';
+import { BulkImportModal } from './BulkImportModal';
 import toast from 'react-hot-toast';
 
 export function AdminStudentsPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [branch, setBranch] = useState('');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const { data, isLoading } = useQuery<ApiResponse<StudentProfile[]>>({
     queryKey: ['admin-students', search, branch],
@@ -40,14 +43,19 @@ export function AdminStudentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Student Directory</h1>
-          <p className="text-sm text-slate-500">{students.length} students enrolled</p>
+          <p className="text-sm text-slate-500">{students.length} student(s) enrolled</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleExport} leftIcon={<Download className="w-4 h-4" />}>
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setIsImportModalOpen(true)} leftIcon={<Upload className="w-4 h-4 text-indigo-600" />}>
+            Import CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} leftIcon={<Download className="w-4 h-4 text-slate-600" />}>
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-3">
@@ -125,6 +133,13 @@ export function AdminStudentsPage() {
           {students.length === 0 && <p className="text-center py-8 text-slate-400 text-sm">No students found.</p>}
         </div>
       )}
+
+      {/* Bulk Import Modal */}
+      <BulkImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['admin-students'] })}
+      />
     </div>
   );
 }

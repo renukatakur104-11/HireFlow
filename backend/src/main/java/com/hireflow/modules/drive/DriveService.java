@@ -38,6 +38,7 @@ public class DriveService {
     private final UserRepository userRepository;
     private final EligibilityService eligibilityService;
     private final NotificationService notificationService;
+    private final com.hireflow.modules.audit.AuditService auditService;
 
     @Transactional
     public DriveDto createDrive(DriveCreateRequest req, UserPrincipal adminPrincipal) {
@@ -77,6 +78,12 @@ public class DriveService {
                     .build()).collect(Collectors.toSet());
             drive.setRounds(rounds);
             drive = driveRepository.save(drive);
+        }
+
+        try {
+            auditService.logDriveCreated(admin.getId(), drive.getId(), drive.getCompanyName(), drive.getRoleTitle(), null);
+        } catch (Exception e) {
+            log.warn("Failed to audit drive creation: {}", e.getMessage());
         }
 
         if (drive.getStatus() == DriveStatus.OPEN) {
@@ -124,7 +131,7 @@ public class DriveService {
     }
 
     @Transactional
-    public void deleteDrive(Long driveId) {
+    public void deleteDrive(Long driveId, UserPrincipal adminPrincipal) {
         Drive drive = driveRepository.findByIdAndDeletedFalse(driveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Drive", "id", driveId));
         long appCount = applicationRepository.countByDriveId(driveId);
@@ -136,6 +143,14 @@ public class DriveService {
             drive.setDeleted(true);
         }
         driveRepository.save(drive);
+
+        if (adminPrincipal != null) {
+            try {
+                auditService.logDriveDeleted(adminPrincipal.getId(), driveId, drive.getCompanyName(), null);
+            } catch (Exception e) {
+                log.warn("Failed to audit drive deletion: {}", e.getMessage());
+            }
+        }
     }
 
     @Transactional

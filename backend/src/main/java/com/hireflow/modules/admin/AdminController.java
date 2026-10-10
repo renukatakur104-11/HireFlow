@@ -2,12 +2,16 @@ package com.hireflow.modules.admin;
 
 import com.hireflow.common.exception.ResourceNotFoundException;
 import com.hireflow.common.response.ApiResponse;
+import com.hireflow.modules.admin.dto.BranchPlacementDto;
 import com.hireflow.modules.admin.dto.FunnelDataDto;
 import com.hireflow.modules.admin.dto.KpiStatsDto;
+import com.hireflow.modules.audit.AuditService;
 import com.hireflow.modules.student.StudentProfile;
 import com.hireflow.modules.student.StudentProfileRepository;
 import com.hireflow.modules.student.StudentService;
 import com.hireflow.modules.student.dto.StudentProfileDto;
+import com.hireflow.security.UserPrincipal;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.PageRequest;
@@ -16,6 +20,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayInputStream;
@@ -33,6 +38,7 @@ public class AdminController {
     private final AdminStatsService statsService;
     private final StudentProfileRepository studentProfileRepository;
     private final StudentService studentService;
+    private final AuditService auditService;
 
     @GetMapping("/stats/kpi")
     public ResponseEntity<ApiResponse<KpiStatsDto>> kpi() {
@@ -42,6 +48,11 @@ public class AdminController {
     @GetMapping("/stats/funnel")
     public ResponseEntity<ApiResponse<List<FunnelDataDto>>> funnel() {
         return ResponseEntity.ok(ApiResponse.success(statsService.getFunnel()));
+    }
+
+    @GetMapping("/stats/branch-placements")
+    public ResponseEntity<ApiResponse<List<BranchPlacementDto>>> branchPlacements() {
+        return ResponseEntity.ok(ApiResponse.success(statsService.getBranchPlacements()));
     }
 
     @GetMapping("/students")
@@ -105,4 +116,31 @@ public class AdminController {
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .body(new InputStreamResource(new ByteArrayInputStream(baos.toByteArray())));
     }
+
+    @PostMapping(value = "/students/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<com.hireflow.modules.student.dto.BulkImportResponse>> importStudents(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @AuthenticationPrincipal UserPrincipal principal,
+            HttpServletRequest request) throws java.io.IOException {
+        com.hireflow.modules.student.dto.BulkImportResponse response = studentService.bulkImportStudents(file);
+        if (principal != null) {
+            auditService.logStudentBulkImported(principal.getId(), response.getTotalRows(),
+                    response.getSuccessfulCount(), response.getFailedCount(),
+                    request != null ? request.getRemoteAddr() : null);
+        }
+        return ResponseEntity.ok(ApiResponse.success(response, "Bulk import completed"));
+    }
+
+    @GetMapping("/students/template")
+    public ResponseEntity<InputStreamResource> downloadTemplate() {
+        String templateContent = "Name,Email,Phone,Branch,GraduationYear,CGPA,Backlogs,Skills,Password\n" +
+                "Rahul Verma,rahul.verma@college.edu,9876543210,Computer Science,2026,8.5,0,Java|React|MySQL,Student@123\n" +
+                "Ananya Roy,ananya.roy@college.edu,9876543211,Information Technology,2026,7.9,0,Python|Data Structures,Student@123\n";
+        ByteArrayInputStream bais = new ByteArrayInputStream(templateContent.getBytes(StandardCharsets.UTF_8));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=students_import_template.csv")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(new InputStreamResource(bais));
+    }
 }
+

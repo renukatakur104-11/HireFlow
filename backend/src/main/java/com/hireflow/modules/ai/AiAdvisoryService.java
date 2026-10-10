@@ -159,7 +159,15 @@ public class AiAdvisoryService {
     }
 
     private String callAiApi(String prompt) {
-        RestTemplate restTemplate = new RestTemplate();
+        // Use a RestTemplate with explicit connect/read timeouts to prevent thread starvation
+        // when the AI provider is slow or unreachable. The caller catches any exception and
+        // falls back to rule-based analysis, so this timeout is purely a safety net.
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);  // 5s to establish TCP connection
+        factory.setReadTimeout(15_000);    // 15s to read the full AI response
+        RestTemplate restTemplate = new RestTemplate(factory);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(aiApiKey);

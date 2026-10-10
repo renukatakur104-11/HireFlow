@@ -76,8 +76,10 @@ public class DriveController {
 
     @DeleteMapping("/api/admin/drives/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteDrive(@PathVariable Long id) {
-        driveService.deleteDrive(id);
+    public ResponseEntity<ApiResponse<Void>> deleteDrive(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        driveService.deleteDrive(id, principal);
         return ResponseEntity.ok(ApiResponse.success(null, "Drive deleted"));
     }
 

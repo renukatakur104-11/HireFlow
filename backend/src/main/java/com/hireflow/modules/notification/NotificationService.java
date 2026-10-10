@@ -36,6 +36,7 @@ public class NotificationService {
     private final DriveRepository driveRepository;
     private final ApplicationRepository applicationRepository;
     private final EligibilityService eligibilityService;
+    private final com.hireflow.modules.audit.AuditService auditService;
 
     @Transactional(readOnly = true)
     public Page<NotificationDto> getMyNotifications(UserPrincipal principal, Pageable pageable) {
@@ -48,12 +49,15 @@ public class NotificationService {
     }
 
     @Transactional
-    public void markRead(Long notificationId, UserPrincipal principal) {
-        recipientRepository.findByNotificationIdAndUserId(notificationId, principal.getId()).ifPresent(r -> {
-            r.setRead(true);
-            r.setReadAt(LocalDateTime.now());
-            recipientRepository.save(r);
-        });
+    public void markRead(Long notificationOrRecipientId, UserPrincipal principal) {
+        recipientRepository.findByNotificationIdAndUserId(notificationOrRecipientId, principal.getId())
+                .or(() -> recipientRepository.findById(notificationOrRecipientId)
+                        .filter(r -> r.getUser().getId().equals(principal.getId())))
+                .ifPresent(r -> {
+                    r.setRead(true);
+                    r.setReadAt(LocalDateTime.now());
+                    recipientRepository.save(r);
+                });
     }
 
     @Transactional
@@ -109,6 +113,15 @@ public class NotificationService {
         Notification notif = createNotification(req.getTitle(), req.getMessage(), req.getPriority(),
                 NotificationType.CUSTOM_BROADCAST, null, admin, dedupKey);
         dispatchToUsers(notif, targets);
+
+        try {
+            auditService.logNotificationBroadcast(admin.getId(),
+                    req.getAudience() != null ? req.getAudience() : "ALL",
+                    targets.size(), null);
+        } catch (Exception e) {
+            log.warn("Failed to audit notification broadcast: {}", e.getMessage());
+        }
+
         return targets.size();
     }
 

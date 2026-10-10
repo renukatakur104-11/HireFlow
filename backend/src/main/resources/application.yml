@@ -66,6 +66,21 @@ hireflow:
     provider: ${AI_PROVIDER:GEMINI}
     api-key: ${AI_API_KEY:}
     model: ${AI_MODEL:gemini-1.5-flash}
+    base-url: ${AI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
+    enabled: ${AI_ENABLED:false}
+
+# Spring Boot Actuator – expose only the health check endpoint
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never   # never expose DB credentials / env details
+      show-components: never
+  server:
+    port: ${PORT:8080}      # keep on the same port as the API
 
 springdoc:
   api-docs:
