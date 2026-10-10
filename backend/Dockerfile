@@ -1,19 +1,14 @@
 # Stage 1: Build the Application
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM maven:3.9.9-eclipse-temurin-17-alpine AS builder
 WORKDIR /app
 
-# Install curl required by Maven Wrapper to download the wrapper jar if needed
-RUN apk add --no-cache curl
-
-# Copy Maven wrapper and dependencies specification
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
-RUN chmod +x ./mvnw
-RUN ./mvnw dependency:go-offline -B
+# Copy pom.xml and download dependencies first for efficient layer caching
+COPY pom.xml ./
+RUN mvn dependency:go-offline -B
 
 # Copy source code and package application
 COPY src ./src
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 # Stage 2: Minimal Production JRE Runtime
 FROM eclipse-temurin:17-jre-alpine
