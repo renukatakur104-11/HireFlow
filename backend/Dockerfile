@@ -2,6 +2,9 @@
 FROM eclipse-temurin:17-jdk-alpine AS builder
 WORKDIR /app
 
+# Install curl required by Maven Wrapper to download the wrapper jar if needed
+RUN apk add --no-cache curl
+
 # Copy Maven wrapper and dependencies specification
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
